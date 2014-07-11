@@ -3,4 +3,4 @@
 import soundmodem.dbpsk as d
 
 if __name__=="__main__":
-    d.encode("ea")
+    print d.encode("ee")

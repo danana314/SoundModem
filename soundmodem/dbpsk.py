@@ -7,13 +7,15 @@ _byteStartBit = 0
 _byteStopBit = 1
 _evenParity = True
 
+_barkerCode = [1,1,1,1,1,0,0,1,1,0,1,0,1]
+
 def encode(message):
     encoded = [_encodedStartedBit]
     for c in list(bytearray(message)):
         bini = [int(b,2) for b in format(c, '#010b')[2:]]
-        print bini
-        #xord = [ord(a)^ord(b) for a,b in zip(binc, binc)]
-        #print xord
+        for bit in bini:            
+            encoded.append(encoded[-1] ^ bit)
+    return encoded
 
 def _bitCount(int_type):
     count = 0
