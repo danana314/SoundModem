@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
+from __future__ import division
 import numpy as np
-import binascii
+from pylab import plot, show, axis
+from scipy.io.wavfile import write
+from itertools import repeat
 
 _encodedStartedBit = 1
 _byteStartBit = 0
@@ -11,40 +14,44 @@ _barkerCode = [1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1]
 
 
 def modulate(msg):
-    encmsg = encode(msg)
-
+    encmsg = _unipolar_to_bipolar(encode(msg))
+    _modulate(encmsg, msg)
     return encmsg
 
+def _modulate(encmsg, msg):
+    amp = 10000
+    freq = 1000
+    period = 1/freq    
+    periods_per_bit = 20
+    duration = periods_per_bit * len(encmsg) / freq
+    sample_rate = 44100
+    samples_per_period = period*sample_rate
+    tone = note(freq, duration, amp)
+    
+    samples_per_bit = periods_per_bit * samples_per_period
+    msg_exp = [repeated for value in encmsg for repeated in repeat(value, int(samples_per_bit))]
+    tone_modulated = np.int16([a*b for a,b in zip(tone, msg_exp)])
+    
+    # writing the sound to a file
+    filename = 'F' + str(freq) + \
+        'PPB' + str(periods_per_bit) + \
+        msg + \
+        '.wav'
+    write(filename, sample_rate, tone_modulated)
 
-def sound(fs):
-    import numpy as np
-    from scipy.io.wavfile import write
 
-    data = np.random.uniform(-1,1,44100) # 44100 random samples between -1 and 1
-    scaled = np.int16(data/np.max(np.abs(data)) * 32767)
-    write('test.wav', 44100, scaled)
+    t = np.linspace(0, duration, duration*sample_rate)
+    plot(t, tone_modulated)
+    axis([0,10*period*periods_per_bit,amp*1.5,amp*-1.5])
+    show()
+    
 
 
 def note(freq, duration, amp=1, rate=44100):
-    from numpy import linspace,sin,pi,int16
-    t = linspace(0,duration,duration*rate)
-    data = sin(2*pi*freq*t)*amp
-    return data.astype(int16) # two byte integers
-
-def gentone():
-    from scipy.io.wavfile import write
-    #from pylab import plot,show,axis
-    #from numpy import linspace
-
-    # A tone, 2 seconds, 44100 samples per second
-    tone = note(440,2,amp=10000)
-
-    write('440hzAtone.wav',44100,tone) # writing the sound to a file
-
-    #plot(linspace(0,2,2*44100),tone)
-    #axis([0,0.4,15000,-15000])
-    #show()
-
+    t = np.linspace(0,duration,duration*rate)
+    data = np.sin(2*np.pi*freq*t)*amp
+    #scaled_data = np.int16(data/np.max(np.abs(data)) * 32767)
+    return data.astype(np.int16) # two byte integers
 
 
 def encode(message):
