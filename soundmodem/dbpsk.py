@@ -1,60 +1,40 @@
 # -*- coding: utf-8 -*-
 from __future__ import division
 import numpy as np
-from pylab import plot, show, axis
-from scipy.io.wavfile import write
 from itertools import repeat
 
 _encodedStartedBit = 1
-_byteStartBit = 0
-_byteStopBit = 1
-_evenParity = True
-
 _barkerCode = [1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1]
 
 
-def modulate(msg):
-    encmsg = _unipolar_to_bipolar(encode(msg))
-    _modulate(encmsg, msg)
-    return encmsg
-
-def _modulate(encmsg, msg):
-    amp = 10000
-    freq = 1000
+def modulate(msg, amp, freq, sample_rate, periods_per_bit):
+    # Encode message    
+    encmsg = _unipolar_to_bipolar(_encode(msg))
+    
+    # Modulate signal
     period = 1/freq    
-    periods_per_bit = 20
     duration = periods_per_bit * len(encmsg) / freq
-    sample_rate = 44100
     samples_per_period = period*sample_rate
-    tone = note(freq, duration, amp)
-    
     samples_per_bit = periods_per_bit * samples_per_period
-    msg_exp = [repeated for value in encmsg for repeated in repeat(value, int(samples_per_bit))]
-    tone_modulated = np.int16([a*b for a,b in zip(tone, msg_exp)])
     
-    # writing the sound to a file
-    filename = 'F' + str(freq) + \
-        'PPB' + str(periods_per_bit) + \
-        msg + \
-        '.wav'
-    write(filename, sample_rate, tone_modulated)
-
-
-    t = np.linspace(0, duration, duration*sample_rate)
-    plot(t, tone_modulated)
-    axis([0,10*period*periods_per_bit,amp*1.5,amp*-1.5])
-    show()
+    carrier = _generate_carrier_signal(freq, duration, amp)
+    msg_exp = [repeated for value in encmsg for repeated in repeat(value, int(samples_per_bit))]    # expanded to match signal length
+    modulated_signal = np.int16([a*b for a,b in zip(carrier, msg_exp)])
+    return modulated_signal
     
 
+def demodulate(data, sample_rate):
+    duration = len(data)/sample_rate
 
-def note(freq, duration, amp=1, rate=44100):
+
+def _generate_carrier_signal(freq, duration, amp=1, rate=44100):
     t = np.linspace(0,duration,duration*rate)
     data = np.sin(2*np.pi*freq*t)*amp
     #scaled_data = np.int16(data/np.max(np.abs(data)) * 32767)
     return data.astype(np.int16) # two byte integers
 
 
-def encode(message):
+def _encode(message):
     encoded = [_encodedStartedBit]
     for c in list(bytearray(message)):
         binarr = [int(b, 2) for b in format(c, '#010b')[2:]]
@@ -63,7 +43,7 @@ def encode(message):
     return encoded
 
 
-def decode(message):
+def _decode(message):
     decoded_arr = [yi ^ message[i - 1] for i, yi in enumerate(message)][1:]
     decoded = ""
     for i in range(0, len(decoded_arr), 8):
