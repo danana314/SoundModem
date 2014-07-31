@@ -55,6 +55,10 @@ def _unipolar_to_bipolar(arr):
     return [2 * x - 1 for x in arr]
 
 
+def _bipolar_to_unipolar(arr):
+    return [(x + 1) // 2 for x in arr]
+
+
 def _bitCount(int_type):
     count = 0
     while (int_type):
